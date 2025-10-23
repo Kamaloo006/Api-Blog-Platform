@@ -28,6 +28,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{post_id}/comments/{comment_id}', [CommentController::class, 'delete']);
 
     Route::post('/posts/{post_id}/comments/{comment_id}', [CommentController::class, 'storeReply']);
-    //test this route 
-    // store post -> create comment -> login to another user -> create reply
+
+    Route::put('/posts/{post_id}/comments/{comment_id}/reply', [CommentController::class, 'updateReply']);
 });
+
+
+Route::get('/posts/{post_id}/comments', [CommentController::class, 'getPostComments']);

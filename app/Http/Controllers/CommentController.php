@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCommentRequest;
 use App\Models\Comment;
 use App\Models\Post;
+use Dotenv\Exception\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,18 +28,59 @@ class CommentController extends Controller
 
     public function update(Request $request, $post_id, $comment_id)
     {
-        $updatedComment = $request->validate(['content' => 'string|required|max:255']);
-        $post = Post::findOrFail($post_id);
-        $comment = Comment::findOrFail($comment_id);
+        try {
 
+            $post = Post::findOrFail($post_id);
+            $comment = Comment::where('id', $comment_id)
+                ->where('post_id', $post_id)
+                ->firstOrFail();
 
-        if (!($comment->user_id === Auth::user()->id)) {
-            return response()->json(['message' => 'you are not authorized to change the comment'], 401);
-        }
+            if ($comment->user_id !== Auth::user()->id) {
+                return response()->json([
+                    'message' => 'Unauthorized: You can only update your own comments'
+                ], 403);
+            }
 
-        if ($comment->post_id === $post->id) {
-            $new_comment = $comment->update($updatedComment);
-            return response()->json(['message' => 'comment updated successfuly', 'name' => Auth::user()->name, 'updated comment' => $new_comment], 200);
+            $validatedData = $request->validate([
+                'content' => 'required|string|max:255'
+            ]);
+
+            if ($comment->parent_id === null) {
+
+                $comment->update($validatedData);
+
+                return response()->json([
+                    'message' => 'Comment updated successfully',
+                    'comment' => [
+                        'id' => $comment->id,
+                        'content' => $comment->content,
+                        'user_id' => $comment->user_id
+                    ]
+                ], 200);
+            } else {
+                try {
+                    $comment->update($validatedData);
+
+                    return response()->json([
+                        'message' => 'Reply updated successfully',
+                        'reply' => $comment->load('user')
+                    ], 200);
+                } catch (ModelNotFoundException $e) {
+                    return response()->json([
+                        'message' => 'Reply not found or this is not a reply'
+                    ], 404);
+                }
+            }
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Comment or post not found'
+            ], 404);
+        } catch (ValidationException $e) {
+
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->getMessage()
+            ], 422);
         }
     }
 
@@ -68,5 +111,17 @@ class CommentController extends Controller
             return response(['message' => 'reply created successfuly', 'reply' => $reply], 201);
         }
         return response(['message' => 'error happened'], 422);
+    }
+
+    public function getPostComments($post_id)
+    {
+        $comments = Comment::with(['user', 'replies.user'])
+            ->where('post_id', $post_id)
+            ->whereNull('parent_id')
+            ->get();
+
+        return response()->json([
+            'comments' => $comments
+        ], 200);
     }
 }

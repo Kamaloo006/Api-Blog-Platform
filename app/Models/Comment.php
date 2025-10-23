@@ -19,11 +19,11 @@ class Comment extends Model
 
     public function replies()
     {
-        return $this->hasMany(Comment::class);
+        return $this->hasMany(Comment::class, 'parent_id');
     }
 
     public function parent()
     {
-        return $this->belongsTo(Comment::class);
+        return $this->belongsTo(Comment::class, 'parent_id');
     }
 }
