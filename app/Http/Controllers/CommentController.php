@@ -46,7 +46,6 @@ class CommentController extends Controller
             ]);
 
             if ($comment->parent_id === null) {
-
                 $comment->update($validatedData);
 
                 return response()->json([

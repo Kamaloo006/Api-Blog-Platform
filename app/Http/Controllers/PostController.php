@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
+use App\Models\Category;
 use App\Models\Post;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -82,6 +83,68 @@ class PostController extends Controller
             return response()->json(['error' => 'id not found', 'message' => $e->getMessage()]);
         } catch (Exception $e) {
             return response()->json('error happened when deleting');
+        }
+    }
+
+
+
+    public function addCategoryToPost(Request $request, $post_id)
+    {
+        try {
+
+            $post = Post::findOrFail($post_id);
+            if (Auth::user()->id === $post->user_id) {
+                $category = Category::findOrFail($request->category_id);
+                $post->categories()->attach($request->category_id);
+                return response()->json(['message' => 'category added successfuly'], 200);
+            }
+            return response()->json(['message' => 'You are not authorized'], 401);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
+        }
+    }
+
+    public function deleteCategoryFromPost(Request $request, $post_id)
+    {
+        try {
+            $post = Post::findOrFail($post_id);
+            $category = Category::findOrFail($request->category_id);
+
+            if (Auth::id() !== $post->user_id) {
+                return response()->json(['message' => 'You are not authorized to modify this post'], 403);
+            }
+
+
+            if ($post->categories()->where('category_id', $request->category_id)->exists()) {
+                $post->categories()->detach($request->category_id);
+
+                return response()->json([
+                    'message' => 'Category removed from post successfully'
+                ], 200);
+            }
+
+            return response()->json([
+                'message' => 'Category is not exist with this post'
+            ], 404);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
+        }
+    }
+
+    public function showPostCategories($post_id)
+    {
+        try {
+            $post = Post::findOrFail($post_id);
+            $post_categories = $post->categories()->get();
+            return response()->json(['post categories' => $post_categories], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
         }
     }
 }

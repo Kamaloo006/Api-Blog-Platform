@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\CheckUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +32,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post_id}/comments/{comment_id}', [CommentController::class, 'storeReply']);
 
     Route::put('/posts/{post_id}/comments/{comment_id}/reply', [CommentController::class, 'updateReply']);
+
+
+
+    Route::post('/categories', [CategoryController::class, 'store'])->middleware('checkUser');
+    Route::put('/categories/{id}', [CategoryController::class, 'update'])->middleware('checkUser');
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->middleware('checkUser');
+    Route::get('/categories', [CategoryController::class, 'show']);
+
+
+    Route::post('/posts/{post_id}/categories', [PostController::class, 'addCategoryToPost']);
+    Route::delete('/posts/{post_id}/categories', [PostController::class, 'deleteCategoryFromPost']);
+    Route::get('/posts/{post_id}/categories', [PostController::class, 'showPostCategories']);
 });
 
 
