@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\LikeController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\CheckUser;
@@ -44,6 +45,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post_id}/categories', [PostController::class, 'addCategoryToPost']);
     Route::delete('/posts/{post_id}/categories', [PostController::class, 'deleteCategoryFromPost']);
     Route::get('/posts/{post_id}/categories', [PostController::class, 'showPostCategories']);
+
+    Route::get('/categories/{id}/posts', [PostController::class, 'getCategoryPosts']);
+
+    Route::post('/posts/{post_id}/like', [LikeController::class, 'likePost']);
+    Route::delete('/posts/{post_id}/like', [LikeController::class, 'unLikePost']);
+    Route::get("/posts/{post_id}/likes", [LikeController::class, 'getPostLikes']);
 });
 
 

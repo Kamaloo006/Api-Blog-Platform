@@ -147,4 +147,17 @@ class PostController extends Controller
             return response()->json('error happened', 403);
         }
     }
+
+    public function getCategoryPosts($category_id)
+    {
+        try {
+            $category = Category::findOrFail($category_id);
+            $category_posts = $category->posts()->get();
+            return response()->json(['category posts' => $category_posts], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
+        }
+    }
 }

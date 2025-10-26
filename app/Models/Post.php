@@ -22,4 +22,9 @@ class Post extends Model
     {
         return $this->belongsToMany(Category::class, 'category_post');
     }
+
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
+    }
 }
