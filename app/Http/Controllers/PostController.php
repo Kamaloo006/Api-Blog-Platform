@@ -6,6 +6,7 @@ use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -17,9 +18,9 @@ class PostController extends Controller
 {
     public function index()
     {
+        // show post category when sending request to show the post
 
-
-        $posts = Post::all()->where('user_id', Auth::user()->id);
+        $posts = Post::all();
         if (!$posts->isEmpty())
             return response()->json($posts, 200);
         return response()->json(['message' => 'you are not authorized'], 401);
@@ -159,5 +160,43 @@ class PostController extends Controller
         } catch (Exception $e) {
             return response()->json('error happened', 403);
         }
+    }
+
+
+    public function addToFavorites($post_id)
+    {
+        $current_user = Auth::user(); // 
+        $post = Post::where('id', $post_id)->firstOrFail();
+
+
+
+        if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
+            $current_user->favoritePosts()->syncWithoutDetaching([$post->id]);
+            return response()->json(['message' => 'post added to favorites'], 201);
+        }
+        return response()->json(['message' => 'post already in favorites'], 400);
+    }
+
+
+    public function removeFromFavorites($post_id)
+    {
+        $current_user = Auth::user();
+        $post = Post::where('id', $post_id)->firstOrFail();
+        if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
+            return response()->json(['message' => 'post not added to favorites'], 400);
+        }
+        $current_user->favoritePosts()->detach([$post->id]);
+        return response()->json(['message' => 'post removed from favorites'], 200);
+    }
+
+    public function getUserFavoritePosts($user_id)
+    {
+        $user = User::findOrFail($user_id);
+        $current_user = Auth::user();
+        if ($current_user->id === $user->id) {
+            $user_favorites = $current_user->favoritePosts()->get();
+            return response()->json(['user' => $current_user->name, 'favorite posts' => $user_favorites], 200);
+        }
+        return response()->json("user not authorized", 400);
     }
 }

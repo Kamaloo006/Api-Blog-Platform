@@ -54,7 +54,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/posts/{post_id}/comments/{comment_id}/like', [LikeController::class, 'likeComment']);
     Route::delete('/posts/{post_id}/comments/{comment_id}/like', [LikeController::class, 'unLikeComment']);
-    Route::get("/posts/{post_id}/comments/{comment_id}/like", [LikeController::class, 'getCommentLikes']);
+    Route::get("/posts/{post_id}/comments/{comment_id}/likes", [LikeController::class, 'getCommentLikes']);
+
+
+    Route::post('/posts/{post_id}/favorites', [PostController::class, 'addToFavorites']);
+    Route::delete('/posts/{post_id}/favorites', [PostController::class, 'removeFromFavorites']);
+
+    Route::get('/user/{user_id}/favoritesPosts', [PostController::class, 'getUserFavoritePosts']);
 });
 
 
