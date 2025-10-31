@@ -5,14 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
 use App\Models\Category;
+use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-
-use function PHPUnit\Framework\isEmpty;
 
 class PostController extends Controller
 {
@@ -24,6 +23,13 @@ class PostController extends Controller
         if (!$posts->isEmpty())
             return response()->json($posts, 200);
         return response()->json(['message' => 'you are not authorized'], 401);
+    }
+
+    public function getMostLikesPosts()
+    {
+        $posts = Post::withCount('likes')->orderBy('likes_count', 'desc')->get();
+
+        return response()->json(['posts ordered by likes count' => $posts], 200);
     }
 
     public function show(int $id)
@@ -165,38 +171,59 @@ class PostController extends Controller
 
     public function addToFavorites($post_id)
     {
-        $current_user = Auth::user(); // 
-        $post = Post::where('id', $post_id)->firstOrFail();
+        try {
+
+            $current_user = Auth::user();
+            $post = Post::where('id', $post_id)->firstOrFail();
 
 
 
-        if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
-            $current_user->favoritePosts()->syncWithoutDetaching([$post->id]);
-            return response()->json(['message' => 'post added to favorites'], 201);
+            if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
+                $current_user->favoritePosts()->syncWithoutDetaching([$post->id]);
+                return response()->json(['message' => 'post added to favorites'], 201);
+            }
+            return response()->json(['message' => 'post already in favorites'], 400);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
         }
-        return response()->json(['message' => 'post already in favorites'], 400);
     }
 
 
     public function removeFromFavorites($post_id)
     {
-        $current_user = Auth::user();
-        $post = Post::where('id', $post_id)->firstOrFail();
-        if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
-            return response()->json(['message' => 'post not added to favorites'], 400);
+        try {
+
+            $current_user = Auth::user();
+            $post = Post::where('id', $post_id)->firstOrFail();
+            if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {
+                return response()->json(['message' => 'post not added to favorites'], 400);
+            }
+            $current_user->favoritePosts()->detach([$post->id]);
+            return response()->json(['message' => 'post removed from favorites'], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
         }
-        $current_user->favoritePosts()->detach([$post->id]);
-        return response()->json(['message' => 'post removed from favorites'], 200);
     }
 
     public function getUserFavoritePosts($user_id)
     {
-        $user = User::findOrFail($user_id);
-        $current_user = Auth::user();
-        if ($current_user->id === $user->id) {
-            $user_favorites = $current_user->favoritePosts()->get();
-            return response()->json(['user' => $current_user->name, 'favorite posts' => $user_favorites], 200);
+        try {
+
+            $user = User::findOrFail($user_id);
+            $current_user = Auth::user();
+            if ($current_user->id === $user->id) {
+                $user_favorites = $current_user->favoritePosts()->get();
+                return response()->json(['user' => $current_user->name, 'favorite posts' => $user_favorites], 200);
+            }
+            return response()->json("user not authorized", 400);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json('error happened', 403);
         }
-        return response()->json("user not authorized", 400);
     }
 }

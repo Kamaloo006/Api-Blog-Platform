@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Like;
 use App\Models\Comment;
+use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,7 +13,7 @@ class LikeController extends Controller
     public function likePost($post_id)
     {
         $existingLike = Like::where('post_id', $post_id)->where('user_id', Auth::user()->id)->first();
-
+        $post = Post::where('post_id', $post_id);
         if ($existingLike) {
             return response()->json(['message' => 'already liked'], 400);
         }
@@ -20,7 +21,7 @@ class LikeController extends Controller
         Like::create([
             'post_id' => $post_id,
             'user_id' => Auth::user()->id,
-            'comment_id' => null
+            'comment_id' => NULL
         ]);
         return response()->json(['message' => 'Post Liked'], 200);
     }
