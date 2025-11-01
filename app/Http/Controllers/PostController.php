@@ -12,6 +12,7 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -40,24 +41,23 @@ class PostController extends Controller
         return response()->json(['message' => 'you are not authorized'], 401);
     }
 
-    public function store(StorePostRequest $reqeust)
+
+    public function store(StorePostRequest $request)
     {
+        $validated_data = $request->validated();
+        $validated_data['user_id'] = Auth::id();
 
-        if (!Auth::check()) {
-            return response()->json([
-                'message' => 'Unauthorized. Please log in first.'
-            ], 401);
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('images', 'public');
+            $validated_data['image'] = $path;
         }
-
-        $user_id = Auth::user()->id;
-        $validated_data = $reqeust->validated();
-        $validated_data['user_id'] = $user_id;
 
         $post = Post::create($validated_data);
 
         return response()->json([
             'message' => 'Post Created Successfully',
-            'post' => $post
+            'post' => $post,
+            'image_url' => isset($path) ? asset('storage/' . $path) : null,
         ], 201);
     }
 
