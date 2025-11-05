@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('title');
             $table->string('image')->nullable();
             $table->longText('content')->nullable();
+            $table->enum('status', ['published', 'draft', 'archived', 'pending'])->default('draft');
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
         });

@@ -25,6 +25,7 @@ class UpdatePostRequest extends FormRequest
             'title' => 'sometimes|string|max:200',
             'content' => 'sometimes|string|max:500',
             'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'status' => 'sometimes|in:draft'
         ];
     }
 }

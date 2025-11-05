@@ -21,6 +21,7 @@ class PostController extends Controller
         // show post category when sending request to show the post
 
         $posts = Post::all();
+
         if (!$posts->isEmpty())
             return response()->json($posts, 200);
         return response()->json(['message' => 'you are not authorized'], 401);
@@ -36,8 +37,14 @@ class PostController extends Controller
     public function show(int $id)
     {
         $post = Post::findOrFail($id);
-        if ($post->user_id === Auth::user()->id)
+        if ($post->status === 'published') {
             return response()->json($post, 200);
+        }
+
+        if (Auth::check() && Auth::id() === $post->user_id) {
+            return response()->json($post, 200);
+        }
+
         return response()->json(['message' => 'you are not authorized'], 401);
     }
 
@@ -45,7 +52,21 @@ class PostController extends Controller
     public function store(StorePostRequest $request)
     {
         $validated_data = $request->validated();
-        $validated_data['user_id'] = Auth::id();
+        $current_user = Auth::user();
+        $validated_data['user_id'] = $current_user->id;
+
+        // check if user not admin and post status isn't draft
+        if ($current_user->role !== 'admin' && $request->status !== 'draft') {
+            return response()->json(['message' => 'the post should be as draft then it will be apporved'], 400);
+        }
+
+        $validated_data['status'] = 'draft';
+
+
+        if ($current_user->role === 'admin') {
+            $validated_data['status'] = 'published';
+        }
+
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('images', 'public');
@@ -53,6 +74,8 @@ class PostController extends Controller
         }
 
         $post = Post::create($validated_data);
+        $current_user = Auth::user();
+
 
         return response()->json([
             'message' => 'Post Created Successfully',
@@ -65,11 +88,14 @@ class PostController extends Controller
     public function update(UpdatePostRequest $reqeust, int $id)
     {
         try {
+
             $post = Post::findOrFail($id);
+
             if ($post->user_id === Auth::user()->id) {
                 $post->update($reqeust->validated());
                 return response()->json(['message' => 'Post Updated Successfuly', 'new post' => $post], 200);
             }
+
             return response()->json(['message' => 'You are not authorized'], 401);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 401);
@@ -175,7 +201,6 @@ class PostController extends Controller
 
             $current_user = Auth::user();
             $post = Post::where('id', $post_id)->firstOrFail();
-
 
 
             if (!$current_user->favoritePosts()->where('post_id', $post_id)->exists()) {

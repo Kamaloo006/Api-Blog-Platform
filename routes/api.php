@@ -61,6 +61,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post_id}/favorites', [PostController::class, 'addToFavorites']);
     Route::delete('/posts/{post_id}/favorites', [PostController::class, 'removeFromFavorites']);
     Route::get('/user/{user_id}/favoritesPosts', [PostController::class, 'getUserFavoritePosts']);
+
+    // POSTS STATUS OPERATIONS
+    Route::post('/posts/{post_id}/submit_review', [PostController::class, 'submitReview']);
+    Route::get("/admin/pending_posts", [PostController::class, 'getPendingPosts'])->middleware('checkUser');
+    Route::post("/admin/posts/{post_id}/approve", [PostController::class, 'approvePost'])->middleware('checkUser');
+    Route::get("/admin/posts/{post_id}/reject", [PostController::class, 'rejectPost'])->middleware('checkUser');
 });
 
 
