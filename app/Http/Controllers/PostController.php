@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
+use App\Http\Resources\PostResource;
 use App\Models\Category;
 use App\Models\Like;
 use App\Models\Post;
@@ -17,33 +18,32 @@ class PostController extends Controller
 {
     public function index()
     {
-        // show post category when sending request to show the post
-
         $posts = Post::where('status', 'published')->get();
 
-        if (!$posts->isEmpty())
-            return response()->json($posts, 200);
-        return response()->json(['message' => 'you are not authorized'], 401);
+        if (!$posts->isEmpty()) {
+            return PostResource::collection($posts);
+        }
+
+        return response()->json(['message' => 'No published posts found'], 404);
     }
 
     public function getMostLikesPosts()
     {
         $posts = Post::withCount('likes')->orderBy('likes_count', 'desc')->get();
 
-        return response()->json(['posts ordered by likes count' => $posts], 200);
+        return PostResource::collection($posts);
     }
 
     public function show(int $id)
     {
         $post = Post::findOrFail($id);
+
         if ($post->status === 'published') {
-            return response()->json($post, 200);
-        } else {
-            return response()->json(['post not published yet'], 404);
+            return new PostResource($post);
         }
 
         if (Auth::check() && Auth::id() === $post->user_id) {
-            return response()->json($post, 200);
+            return new PostResource($post);
         }
 
         return response()->json(['message' => 'you are not authorized'], 401);
@@ -81,7 +81,7 @@ class PostController extends Controller
 
         return response()->json([
             'message' => 'Post Created Successfully',
-            'post' => $post,
+            'post' => new PostResource($post),
             'image_url' => isset($path) ? asset('storage/' . $path) : null,
         ], 201);
     }
@@ -95,7 +95,10 @@ class PostController extends Controller
 
             if ($post->user_id === Auth::user()->id) {
                 $post->update($reqeust->validated());
-                return response()->json(['message' => 'Post Updated Successfuly', 'new post' => $post], 200);
+                return response()->json([
+                    'message' => 'Post Updated Successfully',
+                    'new_post' => new PostResource($post)
+                ], 200);
             }
 
             return response()->json(['message' => 'You are not authorized'], 401);
@@ -188,7 +191,9 @@ class PostController extends Controller
         try {
             $category = Category::findOrFail($category_id);
             $category_posts = $category->posts()->get();
-            return response()->json(['category posts' => $category_posts], 200);
+            return response()->json([
+                'category_posts' => PostResource::collection($category_posts)
+            ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'id not found', 'message' => $e->getMessage()], 404);
         } catch (Exception $e) {
@@ -244,7 +249,10 @@ class PostController extends Controller
             $current_user = Auth::user();
             if ($current_user->id === $user->id) {
                 $user_favorites = $current_user->favoritePosts()->get();
-                return response()->json(['user' => $current_user->name, 'favorite posts' => $user_favorites], 200);
+                return response()->json([
+                    'user' => $current_user->name,
+                    'favorite_posts' => PostResource::collection($user_favorites)
+                ], 200);
             }
             return response()->json("user not authorized", 400);
         } catch (ModelNotFoundException $e) {
@@ -284,7 +292,7 @@ class PostController extends Controller
     public function getPendingPosts()
     {
         $posts = Post::where('status', 'pending')->get();
-        return response()->json(['pending posts' => $posts], 200);
+        return PostResource::collection($posts);
     }
 
     // approve post by admin
@@ -301,7 +309,11 @@ class PostController extends Controller
         $post->status = 'published';
         $post->save();
 
-        return response()->json(['user' => $post->user->name, 'post' => $post, 'post has been published successfuly'], 200);
+        return response()->json([
+            'user' => $post->user->name,
+            'post' => new PostResource($post),
+            'message' => 'post has been published successfully'
+        ], 200);
     }
 
 
