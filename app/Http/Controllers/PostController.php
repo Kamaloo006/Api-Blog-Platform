@@ -12,7 +12,6 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -20,7 +19,7 @@ class PostController extends Controller
     {
         // show post category when sending request to show the post
 
-        $posts = Post::all();
+        $posts = Post::where('status', 'published')->get();
 
         if (!$posts->isEmpty())
             return response()->json($posts, 200);
@@ -39,6 +38,8 @@ class PostController extends Controller
         $post = Post::findOrFail($id);
         if ($post->status === 'published') {
             return response()->json($post, 200);
+        } else {
+            return response()->json(['post not published yet'], 404);
         }
 
         if (Auth::check() && Auth::id() === $post->user_id) {
@@ -55,8 +56,9 @@ class PostController extends Controller
         $current_user = Auth::user();
         $validated_data['user_id'] = $current_user->id;
 
+        $post_status = $request->status;
         // check if user not admin and post status isn't draft
-        if ($current_user->role !== 'admin' && $request->status !== 'draft') {
+        if ($current_user->role !== 'admin' && ($post_status === 'pending' || $post_status === 'archived' || $post_status === 'published')) {
             return response()->json(['message' => 'the post should be as draft then it will be apporved'], 400);
         }
 
@@ -250,5 +252,73 @@ class PostController extends Controller
         } catch (Exception $e) {
             return response()->json('error happened', 403);
         }
+    }
+
+    // user submit review, it goes pending. after that the admin will approve or reject
+    public function submitReview($post_id)
+    {
+        $post = Post::findOrFail($post_id);
+        $current_user = Auth::user();
+
+        if ($current_user->id !== $post->user_id) {
+            return response()->json(['message' => 'you are not authorized'], 403);
+        }
+
+        if ($current_user->role === 'admin') return response()->json(['message' => 'your post already been published'], 200);
+
+        if ($post->status === 'pending') {
+            return response()->json(['message' => 'post is already pending review'], 400);
+        }
+
+        if ($post->status === 'published') {
+            return response()->json(['message' => 'post is already published'], 400);
+        }
+
+        $post->status = 'pending';
+        $post->save();
+
+        return response()->json(['message' => 'your post has been submitted successfuly, waiting for the admin to approve'], 200);
+    }
+
+    // admin gets pending posts
+    public function getPendingPosts()
+    {
+        $posts = Post::where('status', 'pending')->get();
+        return response()->json(['pending posts' => $posts], 200);
+    }
+
+    // approve post by admin
+    public function approvePost($post_id)
+    {
+        $post = Post::findOrFail($post_id);
+
+        if ($post->status === 'published')
+            return response()->json(['message' => 'post is already published'], 400);
+
+        if ($post->status === 'draft' || $post->status === 'archived')
+            return response()->json(['message' => 'post is not in pending review yet'], 400);
+
+        $post->status = 'published';
+        $post->save();
+
+        return response()->json(['user' => $post->user->name, 'post' => $post, 'post has been published successfuly'], 200);
+    }
+
+
+    // reject post and send it to draft
+    public function rejectPost($post_id)
+    {
+        $post = Post::findOrFail($post_id);
+
+        if ($post->status === 'published')
+            return response()->json(['message' => 'post is already published'], 400);
+
+        if ($post->status === 'draft' || $post->status === 'archived')
+            return response()->json(['message' => 'post is not in pending review yet'], 400);
+
+        $post->status = 'draft';
+        $post->save();
+
+        return response()->json(['user' => $post->user->name, 'message' => 'the admin has rejected your post, please update it and try again'], 400);
     }
 }
