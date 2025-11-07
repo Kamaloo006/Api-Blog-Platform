@@ -20,6 +20,9 @@ Route::post('/logout', [UserController::class, 'logout'])->middleware("auth:sanc
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    Route::get("/posts/search", [PostController::class, 'search']);
+
+
     // POSTS CRUD OPERATIONS
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/most_liked', [PostController::class, 'getMostLikesPosts']);

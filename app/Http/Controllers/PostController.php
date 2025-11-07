@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+use function Laravel\Prompts\search;
+
 class PostController extends Controller
 {
     public function index()
@@ -332,5 +334,50 @@ class PostController extends Controller
         $post->save();
 
         return response()->json(['user' => $post->user->name, 'message' => 'the admin has rejected your post, please update it and try again'], 400);
+    }
+
+
+
+
+    public function search(Request $request)
+    {
+
+        $search = $request->query('q');
+        $categoryId = $request->query('category');
+
+        if (!$search && !$categoryId) {
+            return response()->json([
+                'message' => 'Please provide a search query using ?q=keyword or ?category=id'
+            ], 400);
+        }
+
+
+        $query = Post::where('status', 'published');
+
+
+        // check by title or content
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%")->orWhere('content', 'LIKE', "%{$search}%");
+            });
+        }
+
+
+        // check by category id
+        if ($categoryId) {
+            $query->whereHas('categories', function ($q) use ($categoryId) {
+                $q->where('categories.id', $categoryId);
+            });
+        }
+
+
+        $posts = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'search_query' => $search,
+            'category_id' => $categoryId,
+            'results_count' => $posts->count(),
+            'posts' => PostResource::collection($posts)
+        ], 200);
     }
 }
