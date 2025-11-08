@@ -301,6 +301,12 @@ class PostController extends Controller
     public function approvePost($post_id)
     {
         $post = Post::findOrFail($post_id);
+        $user = $post->user;
+
+        if ($user->role === 'user') {
+            $user->role = 'author';
+            $user->save();
+        }
 
         if ($post->status === 'published')
             return response()->json(['message' => 'post is already published'], 400);
@@ -341,43 +347,51 @@ class PostController extends Controller
 
     public function search(Request $request)
     {
+        try {
 
-        $search = $request->query('q');
-        $categoryId = $request->query('category');
+            $search = $request->query('q');
+            $categoryId = $request->query('category');
 
-        if (!$search && !$categoryId) {
+
+            Category::findOrFail($categoryId);
+            if (!$search && !$categoryId) {
+                return response()->json([
+                    'message' => 'Please provide a search query using ?q=keyword or ?category=id'
+                ], 400);
+            }
+
+
+            $query = Post::where('status', 'published');
+
+
+            // check by title or content
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'LIKE', "%{$search}%")->orWhere('content', 'LIKE', "%{$search}%");
+                });
+            }
+
+
+            // check by category id
+            if ($categoryId) {
+                $query->whereHas('categories', function ($q) use ($categoryId) {
+                    $q->where('categories.id', $categoryId);
+                });
+            }
+
+
+            $posts = $query->orderBy('created_at', 'desc')->get();
+
             return response()->json([
-                'message' => 'Please provide a search query using ?q=keyword or ?category=id'
-            ], 400);
+                'search_query' => $search,
+                'category_id' => $categoryId,
+                'results_count' => $posts->count(),
+                'posts' => PostResource::collection($posts)
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'category not found exception', 'message' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'error happened while searching'], 400);
         }
-
-
-        $query = Post::where('status', 'published');
-
-
-        // check by title or content
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'LIKE', "%{$search}%")->orWhere('content', 'LIKE', "%{$search}%");
-            });
-        }
-
-
-        // check by category id
-        if ($categoryId) {
-            $query->whereHas('categories', function ($q) use ($categoryId) {
-                $q->where('categories.id', $categoryId);
-            });
-        }
-
-
-        $posts = $query->orderBy('created_at', 'desc')->get();
-
-        return response()->json([
-            'search_query' => $search,
-            'category_id' => $categoryId,
-            'results_count' => $posts->count(),
-            'posts' => PostResource::collection($posts)
-        ], 200);
     }
 }

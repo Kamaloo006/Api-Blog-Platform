@@ -70,6 +70,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get("/admin/pending_posts", [PostController::class, 'getPendingPosts'])->middleware('checkUser');
     Route::post("/admin/posts/{post_id}/approve", [PostController::class, 'approvePost'])->middleware('checkUser');
     Route::post("/admin/posts/{post_id}/reject", [PostController::class, 'rejectPost'])->middleware('checkUser');
+
+    Route::post('/admin/appointUser/{user_id}', [UserController::class, 'appointUser'])->middleware('checkUser');
 });
 
 

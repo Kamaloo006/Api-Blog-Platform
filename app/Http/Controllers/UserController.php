@@ -51,4 +51,17 @@ class UserController extends Controller
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'user logout successfuly'], 200);
     }
+
+
+    public function appointUser($user_id)
+    {
+        $user = User::findOrFail($user_id);
+
+        if ($user->role !== 'admin') {
+            $user->role = 'admin';
+            $user->save();
+            return response()->json(['user' => $user->name, 'message' => 'is Now Admin'], 200);
+        }
+        return response()->json(['message' => 'User is Already an Admin'], 400);
+    }
 }
