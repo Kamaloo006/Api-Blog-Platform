@@ -72,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post("/admin/posts/{post_id}/reject", [PostController::class, 'rejectPost'])->middleware('checkUser');
 
     Route::post('/admin/appointUser/{user_id}', [UserController::class, 'appointUser'])->middleware('checkUser');
+
+    Route::get('/users/search', [UserController::class, 'searchUser']);
 });
 
 
