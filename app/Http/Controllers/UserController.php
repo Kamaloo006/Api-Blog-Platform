@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegisterUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Exception;
@@ -12,22 +13,34 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function register(Request $request)
+    public function register(RegisterUserRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:200',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|confirmed|min:8'
-        ]);
+
+        $validatedData = $request->validated();
+
+        if ($request->hasFile('avatar')) {
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $validatedData['avatar'] = $path;
+        }
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']),
+            'avatar' => $validatedData['avatar'] ?? null,
+            'bio' => $validatedData['bio'] ?? null,
+            'role' => 'user',
         ]);
 
-        return response()->json(['message' => 'user created successfuly', 'user' => $user], 200);
+        return response()->json([
+            'message' => 'User created successfully',
+            'user' => $user
+        ], 201);
     }
+
+    // tommorow task is to create function to update user informations and to allow to user to change the password
+
+
     public function login(Request $request)
     {
         $request->validate([

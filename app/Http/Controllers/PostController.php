@@ -78,7 +78,9 @@ class PostController extends Controller
         }
 
         $post = Post::create($validated_data);
-        $current_user = Auth::user();
+        $user = $post->user;
+        $user->role = 'author';
+        $user->save();
 
 
         return response()->json([

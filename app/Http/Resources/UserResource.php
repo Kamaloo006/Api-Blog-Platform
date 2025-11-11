@@ -18,6 +18,8 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'role' => $this->role,
+            'bio' => $this->bio,
+            'avatar' => $this->avatar,
             'date' => $this->created_at->format('Y-m-d H:i:s'),
         ];
     }
