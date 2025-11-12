@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+
     public function register(RegisterUserRequest $request)
     {
 
@@ -96,18 +98,48 @@ class UserController extends Controller
         }
     }
 
-
-
-
-    public function appointUser($user_id)
+    public function updateUserInfo(Request $request, $user_id)
     {
-        $user = User::findOrFail($user_id);
+        try {
+            $user = User::findOrFail($user_id);
 
-        if ($user->role !== 'admin') {
-            $user->role = 'admin';
-            $user->save();
-            return response()->json(['user' => $user->name, 'message' => 'is Now Admin'], 200);
+            // تحقق من الصلاحيات
+            if ($user->id !== Auth::user()->id) {
+                return response()->json(['message' => 'You are not authorized to update this user'], 403);
+            }
+
+            $validatedData = $request->validate([
+                'name' => 'sometimes|string|max:200',
+                'avatar' => 'sometimes|image|mimes:jpg,png,jpeg,gif|max:2048',
+                'bio' => 'sometimes|string|max:2048',
+            ]);
+
+            // معالجة الصورة إذا وجدت
+            if ($request->hasFile('avatar')) {
+                // حذف الصورة القديمة إذا موجودة
+                if ($user->avatar) {
+                    Storage::disk('public')->delete($user->avatar);
+                }
+
+                $path = $request->file('avatar')->store('avatars', 'public');
+                $validatedData['avatar'] = $path;
+            }
+
+
+
+            $user->update($validatedData);
+
+            return response()->json([
+                'message' => 'User information updated successfully',
+                'user' => new UserResource($user)
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'User not found'], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Error happened while updating',
+                'message' => $e->getMessage()
+            ], 500);
         }
-        return response()->json(['message' => 'User is Already an Admin'], 400);
     }
 }

@@ -9,9 +9,9 @@ use App\Http\Middleware\CheckUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Route::get('/user', function (Request $request) {
+//     return $request->user();
+// })->middleware('auth:sanctum');
 
 // user authentication
 Route::post('/register', [UserController::class, 'register']);
@@ -19,9 +19,15 @@ Route::post('/login', [UserController::class, 'login']);
 Route::post('/logout', [UserController::class, 'logout'])->middleware("auth:sanctum");
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users/search', [UserController::class, 'searchUser']);
+
+    Route::post('/admin/{user_id}/appointUser', [UserController::class, 'appointUser'])->middleware('checkUser');
+    Route::post('/users/{user_id}/update', [UserController::class, 'updateUserInfo']);
+
+
+
 
     Route::get("/posts/search", [PostController::class, 'search']);
-
 
     // POSTS CRUD OPERATIONS
     Route::post('/posts', [PostController::class, 'store']);
@@ -70,10 +76,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get("/admin/pending_posts", [PostController::class, 'getPendingPosts'])->middleware('checkUser');
     Route::post("/admin/posts/{post_id}/approve", [PostController::class, 'approvePost'])->middleware('checkUser');
     Route::post("/admin/posts/{post_id}/reject", [PostController::class, 'rejectPost'])->middleware('checkUser');
-
-    Route::post('/admin/appointUser/{user_id}', [UserController::class, 'appointUser'])->middleware('checkUser');
-
-    Route::get('/users/search', [UserController::class, 'searchUser']);
 });
 
 
