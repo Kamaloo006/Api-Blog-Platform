@@ -103,7 +103,6 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($user_id);
 
-            // تحقق من الصلاحيات
             if ($user->id !== Auth::user()->id) {
                 return response()->json(['message' => 'You are not authorized to update this user'], 403);
             }
@@ -114,9 +113,7 @@ class UserController extends Controller
                 'bio' => 'sometimes|string|max:2048',
             ]);
 
-            // معالجة الصورة إذا وجدت
             if ($request->hasFile('avatar')) {
-                // حذف الصورة القديمة إذا موجودة
                 if ($user->avatar) {
                     Storage::disk('public')->delete($user->avatar);
                 }
@@ -140,6 +137,41 @@ class UserController extends Controller
                 'error' => 'Error happened while updating',
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function changePassword(Request $request, $user_id)
+    {
+        try {
+            $currentUser = Auth::user();
+            $user = User::findOrFail($user_id);
+
+            // التحقق من الصلاحيات
+            if ($currentUser->id !== $user->id) {
+                return response()->json(['message' => 'You are not authorized'], 403);
+            }
+
+            // التحقق من صحة البيانات
+            $validated = $request->validate([
+                'current_password' => 'required|string',
+                'new_password' => 'required|string|min:8|confirmed',
+            ]);
+
+            // التحقق من كلمة المرور الحالية
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json(['message' => 'Current password is incorrect'], 400);
+            }
+
+            // تحديث كلمة المرور
+            $user->update([
+                'password' => Hash::make($request->new_password)
+            ]);
+
+            return response()->json(['message' => 'Password changed successfully'], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'User not found'], 404);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error changing password'], 500);
         }
     }
 }
