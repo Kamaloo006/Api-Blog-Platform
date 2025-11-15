@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCommentRequest;
+use App\Mail\NewCommentMail;
 use App\Models\Comment;
 use App\Models\Post;
 use Dotenv\Exception\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class CommentController extends Controller
 {
@@ -22,6 +24,11 @@ class CommentController extends Controller
         $validatedComment['parent_id'] = null;
 
         $comment = Comment::create($validatedComment);
+
+        if ($comment->post->user->email !== $comment->user->email) {
+            Mail::to($comment->post->user->email)
+                ->send(new NewCommentMail($comment));
+        }
 
         return response()->json(['message' => 'comment created successfuly', 'name' => Auth::user()->name, 'comment' => $comment], 201);
     }

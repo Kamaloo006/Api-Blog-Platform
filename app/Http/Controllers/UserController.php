@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterUserRequest;
 use App\Http\Resources\UserResource;
+use App\Mail\NewCommentMail;
+use App\Mail\WelcomeUserMail;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -34,13 +37,15 @@ class UserController extends Controller
             'role' => 'user',
         ]);
 
+
+        Mail::to($user->email)->send(new WelcomeUserMail($user));
+
         return response()->json([
             'message' => 'User created successfully',
             'user' => $user
         ], 201);
     }
 
-    // tommorow task is to create function to update user informations and to allow to user to change the password
 
 
     public function login(Request $request)
@@ -146,23 +151,19 @@ class UserController extends Controller
             $currentUser = Auth::user();
             $user = User::findOrFail($user_id);
 
-            // التحقق من الصلاحيات
             if ($currentUser->id !== $user->id) {
                 return response()->json(['message' => 'You are not authorized'], 403);
             }
 
-            // التحقق من صحة البيانات
             $validated = $request->validate([
                 'current_password' => 'required|string',
                 'new_password' => 'required|string|min:8|confirmed',
             ]);
 
-            // التحقق من كلمة المرور الحالية
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json(['message' => 'Current password is incorrect'], 400);
             }
 
-            // تحديث كلمة المرور
             $user->update([
                 'password' => Hash::make($request->new_password)
             ]);
